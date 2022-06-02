@@ -3,7 +3,7 @@ async function main(){
     console.log("Deploying contracts with the account: ",deployer.address);
 
     console.log("Account balance:", (await deployer.getBalance()).toString());
-    const upsellToken = await ethers.getContractFactory("UpsellToken");
+    const upsellToken = await ethers.getContractFactory("UPsellToken");
     const contract = await upsellToken.deploy();
     console.log("Contract address:", contract.address);
 }

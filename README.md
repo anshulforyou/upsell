@@ -1,15 +1,14 @@
-# Basic Sample Hardhat Project
-
-This project demonstrates a basic Hardhat use case. It comes with a sample contract, a test for that contract, a sample script that deploys that contract, and an example of a task implementation, which simply lists the available accounts.
-
-Try running some of the following tasks:
-
-```shell
-npx hardhat accounts
+## compilation command
 npx hardhat compile
-npx hardhat clean
-npx hardhat test
-npx hardhat node
-node scripts/sample-script.js
-npx hardhat help
-```
+
+## testing command
+npm run test
+
+## deployment command
+npx hardhat run scripts/deploy.js --network matic 
+
+## verification command
+npx hardhat verify {{contract address}} --network matic
+
+Contract address - Polygon Testnet
+0xb5C02d591313aF01EFAE3aB6D749F51d1f48A859
