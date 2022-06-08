@@ -35,6 +35,9 @@ contract ICO is Crowdsale, MintedCrowdsale, CappedCrowdsale, TimedCrowdsale, Whi
   address public foundationTimelock;
   address public partnersTimelock;
 
+  enum CrowdsaleStage { PreICO, ICO }
+  CrowdsaleStage public stage = CrowdsaleStage.PreICO;
+
   constructor(
     uint256 _rate,
     address _wallet,
@@ -78,6 +81,47 @@ contract ICO is Crowdsale, MintedCrowdsale, CappedCrowdsale, TimedCrowdsale, Whi
     require(_newContribution >= investorMinCap && _newContribution <= investorHardCap);
     contributions[_beneficiary] = _newContribution;
   }
+
+  function getUserContribution(address _beneficiary) public view returns (uint256)
+  {
+    return contributions[_beneficiary];
+  }
+
+  function setCrowdsaleStage(uint _stage) public onlyOwner {
+    if(uint(CrowdsaleStage.PreICO) == _stage) {
+      stage = CrowdsaleStage.PreICO;
+    } else if (uint(CrowdsaleStage.ICO) == _stage) {
+      stage = CrowdsaleStage.ICO;
+    }
+
+    if(stage == CrowdsaleStage.PreICO) {
+      rate = 500;
+    } else if (stage == CrowdsaleStage.ICO) {
+      rate = 250;
+    }
+  }
+
+  function _forwardFunds() internal {
+    if(stage == CrowdsaleStage.PreICO) {
+      wallet.transfer(msg.value);
+    } else if (stage == CrowdsaleStage.ICO) {
+      super._forwardFunds();
+    }
+  }
+
+  function _preValidatePurchase(
+    address _beneficiary,
+    uint256 _weiAmount
+  )
+    internal
+  {
+    super._preValidatePurchase(_beneficiary, _weiAmount);
+    uint256 _existingContribution = contributions[_beneficiary];
+    uint256 _newContribution = _existingContribution.add(_weiAmount);
+    require(_newContribution >= investorMinCap && _newContribution <= investorHardCap);
+    contributions[_beneficiary] = _newContribution;
+  }
+
 
 
   /**
