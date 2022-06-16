@@ -1,5 +1,8 @@
+require("@nomiclabs/hardhat-waffle");
 require("@nomiclabs/hardhat-ethers");
 require("@nomiclabs/hardhat-etherscan");
+require("@nomiclabs/hardhat-ganache");
+require("@nomiclabs/hardhat-web3");
 require("dotenv").config();
 const {POLYGON_MUMBAI_RPC_PROVIDER, POLYGON_MAINNET_PROVIDER, PRIVATE_KEY, POLYGON_API_KEY} = process.env;
 module.exports = {

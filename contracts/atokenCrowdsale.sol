@@ -136,22 +136,27 @@ contract atokenCrowdsale{
     }
 
     /**
-     * @dev Validation of an incoming purchase. Use require statements to revert state when conditions are not met.
-     * Use `super` in contracts that inherit from Crowdsale to extend their validations.
-     * Example from CappedCrowdsale.sol's _preValidatePurchase method:
-     *     super._preValidatePurchase(beneficiary, weiAmount);
-     *     require(weiRaised().add(weiAmount) <= cap);
-     * @param beneficiary Address performing the token purchase
-     * @param weiAmount Value in wei involved in the purchase
+    @dev Validation of an incoming purchase. Use require statements to revert state when conditions are not met.
+     Use `super` in contracts that inherit from Crowdsale to extend their validations.
+     Example from CappedCrowdsale.sol's _preValidatePurchase method:
+         super._preValidatePurchase(_beneficiary, _weiAmount);
+         require(weiRaised().add(_weiAmount) <= cap);
+     @param _beneficiary Address performing the token purchase
+     @param _weiAmount Value in wei involved in the purchase
      */
-    function _preValidatePurchase(address _beneficiary, uint256 _weiAmount) internal view {
-        require(_beneficiary != address(0), "Crowdsale: beneficiary is the zero address");
-        require(_weiAmount != 0, "Crowdsale: weiAmount is 0");
-        this; // silence state mutability warning without generating bytecode - see https://github.com/ethereum/solidity/issues/2691
+    
+    function _preValidatePurchase(address _beneficiary, uint256 _weiAmount) internal {
+        preValidatePurchase(_beneficiary, _weiAmount);
         uint256 _existingContribution = contributions[_beneficiary];
         uint256 _newContribution = _existingContribution+_weiAmount;
         require(_newContribution >= investorMinCap && _newContribution <= investorHardCap);
         contributions[_beneficiary] = _newContribution;
+    }
+
+    function preValidatePurchase(address _beneficiary, uint256 _weiAmount) internal view{
+        require(_beneficiary != address(0), "Crowdsale: beneficiary is the zero address");
+        require(_weiAmount != 0, "Crowdsale: weiAmount is 0");
+        this; // silence state mutability warning without generating bytecode - see https://github.com/ethereum/solidity/issues/2691
     }
 
     /**

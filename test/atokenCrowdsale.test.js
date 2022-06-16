@@ -9,7 +9,6 @@ const _wallet = "0xdD2FD4581271e230360230F9337D5c0430Bf44C0";
 
 var atokenContract=null;
 var crowdsale = null;
-var 
 
 var BN = web3.utils.BN;
 
