@@ -3,7 +3,7 @@ pragma solidity ^0.8.4;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-
+import "@openzeppelin/contracts/token/ERC20/utils/TokenTimelock.sol";
 
 contract atokenCrowdsale{
     using SafeERC20 for IERC20;
@@ -36,10 +36,29 @@ contract atokenCrowdsale{
      */
     event TokensPurchased(address indexed purchaser, address indexed beneficiary, uint256 value, uint256 amount);
 
+    // Token Distribution
+    uint256 public tokenSalePercentage   = 70;
+    uint256 public foundersPercentage    = 10;
+    uint256 public foundationPercentage  = 10;
+    uint256 public partnersPercentage    = 10;
+
+    // Token reserve funds
+    address public _foundersFund;
+    address public _foundationFund;
+    address public _partnersFund;
+
+
+    //Token Time Lock
+    address public foundersTimelock;
+    address public foundationTimelock;
+    address public partnersTimelock;
+
+
     // Amount of wei raised
     uint256 private _weiRaised;
 
-    constructor (uint256 rate, address payable wallet, IERC20 token, uint256 cap){
+    constructor (uint256 rate, address payable wallet, IERC20 token, uint256 cap, address foundersFund,
+    address foundationFund, address partnersFund){
             require(rate > 0, "Crowdsale: rate is 0");
             require(wallet != address(0), "Crowdsale: wallet is the zero address");
             require(address(token) != address(0), "Crowdsale: token is the zero address");
@@ -49,6 +68,9 @@ contract atokenCrowdsale{
             _wallet = wallet;
             _token = token;
             _cap = cap;
+            _foundersFund   = foundersFund;
+            _foundationFund = foundationFund;
+            _partnersFund   = partnersFund;
     }
 
     /**
@@ -214,6 +236,32 @@ contract atokenCrowdsale{
      */
     function _forwardFunds() internal {
         _wallet.transfer(msg.value);
+    }
+
+    /**
+    * @dev enables token transfers, called when owner calls finalize()
+    */
+    function finalization() internal {
+        MintableToken _mintableToken = MintableToken(token);
+        uint256 _alreadyMinted = _mintableToken.totalSupply();
+
+        uint256 _finalTotalSupply = _alreadyMinted.div(tokenSalePercentage).mul(100);
+
+        foundersTimelock   = new TokenTimelock(token, foundersFund, releaseTime);
+        foundationTimelock = new TokenTimelock(token, foundationFund, releaseTime);
+        partnersTimelock   = new TokenTimelock(token, partnersFund, releaseTime);
+
+        _mintableToken.mint(address(foundersTimelock),   _finalTotalSupply.mul(foundersPercentage).div(100));
+        _mintableToken.mint(address(foundationTimelock), _finalTotalSupply.mul(foundationPercentage).div(100));
+        _mintableToken.mint(address(partnersTimelock),   _finalTotalSupply.mul(partnersPercentage).div(100));
+
+        _mintableToken.finishMinting();
+        // Unpause the token
+        PausableToken _pausableToken = PausableToken(token);
+        _pausableToken.unpause();
+        _pausableToken.transferOwnership(wallet);
+
+        super.finalization();
     }
 
 }
