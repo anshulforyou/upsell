@@ -6,12 +6,13 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/TokenTimelock.sol";
 import "@openzeppelin/contracts/token/ERC20/extensions/ERC20Pausable.sol";
+import "@openzeppelin/contracts/token/ERC20/presets/ERC20PresetMinterPauser.sol";
 
 contract atokenCrowdsale{
     using SafeERC20 for IERC20;
 
     // The token being sold
-    IERC20 private _token;
+    ERC20PresetMinterPauser private _token;
 
     // Address where funds are collected
     address payable private _wallet;
@@ -52,15 +53,15 @@ contract atokenCrowdsale{
 
     //Token Time Lock
     uint256 public _releaseTime;
-    address public _foundersTimelock;
-    address public _developersTimelock;
-    address public _partnersTimelock;
+    TokenTimelock public _foundersTimelock;
+    TokenTimelock public _developersTimelock;
+    TokenTimelock public _partnersTimelock;
 
 
     // Amount of wei raised
     uint256 private _weiRaised;
 
-    constructor (uint256 rate, address payable wallet, IERC20 token, address foundersFund,
+    constructor (uint256 rate, address payable wallet, ERC20PresetMinterPauser token, address foundersFund,
     address developersFund, address partnersFund){
         require(rate > 0, "Crowdsale: rate is 0");
         require(wallet != address(0), "Crowdsale: wallet is the zero address");
@@ -79,9 +80,11 @@ contract atokenCrowdsale{
         _developersTimelock = new TokenTimelock(token, _developersWallet, _releaseTime);
         _partnersTimelock   = new TokenTimelock(token, _partnersWallet, _releaseTime);
 
-        _token._mint(address(_foundersTimelock), totalSupply.mul(_foundersPercentage).div(100));
-        _token._mint(address(_developersTimelock), totalSupply.mul(_developersPercentage).div(100));
-        _token._mint(address(_partnersTimelock), totalSupply.mul(_partnersPercentage).div(100));
+        ERC20PresetMinterPauser _mintableToken = ERC20PresetMinterPauser(_token);
+
+        _token.mint(address(_foundersTimelock), (totalSupply*_foundersPercentage)/100);
+        _token.mint(address(_developersTimelock), (totalSupply*(_developersPercentage))/100);
+        _token.mint(address(_partnersTimelock), (totalSupply*(_partnersPercentage))/100);
 
 
     }
@@ -202,7 +205,7 @@ contract atokenCrowdsale{
      */
     function _deliverTokens(address beneficiary, uint256 tokenAmount) internal {
         (bool success, bytes memory result) = address(_token).call(abi.encodeWithSignature("mint(uint256)", tokenAmount));
-        _token.safeTransfer(beneficiary, tokenAmount);
+        _token.transfer(beneficiary, tokenAmount);
     }
 
     /**
@@ -254,26 +257,26 @@ contract atokenCrowdsale{
     /**
     * @dev enables token transfers, called when owner calls finalize()
     */
-    function finalization() internal {
-        ERC20 _mintableToken = ERC20(token);
-        uint256 _alreadyMinted = _mintableToken.totalSupply();
+    // function finalization() internal {
+        // ERC20 _mintableToken = ERC20(token);
+        // uint256 _alreadyMinted = _mintableToken.totalSupply();
 
-        // uint256 _finalTotalSupply = _alreadyMinted.div(tokenSalePercentage).mul(100);
+        // // uint256 _finalTotalSupply = _alreadyMinted.div(tokenSalePercentage).mul(100);
 
-        _foundersTimelock   = new TokenTimelock(token, _foundersWallet, _releaseTime);
-        _developersTimelock = new TokenTimelock(token, _developersWallet, _releaseTime);
-        _partnersTimelock   = new TokenTimelock(token, _partnersWallet, _releaseTime);
+        // _foundersTimelock   = new TokenTimelock(token, _foundersWallet, _releaseTime);
+        // _developersTimelock = new TokenTimelock(token, _developersWallet, _releaseTime);
+        // _partnersTimelock   = new TokenTimelock(token, _partnersWallet, _releaseTime);
 
-        _mintableToken.mint(address(_foundersTimelock),   _finalTotalSupply.mul(_foundersPercentage).div(100));
-        _mintableToken.mint(address(_developersTimelock), _finalTotalSupply.mul(_developersPercentage).div(100));
-        _mintableToken.mint(address(_partnersTimelock),   _finalTotalSupply.mul(_partnersPercentage).div(100));
+        // _mintableToken.mint(address(_foundersTimelock),   _finalTotalSupply.mul(_foundersPercentage).div(100));
+        // _mintableToken.mint(address(_developersTimelock), _finalTotalSupply.mul(_developersPercentage).div(100));
+        // _mintableToken.mint(address(_partnersTimelock),   _finalTotalSupply.mul(_partnersPercentage).div(100));
 
-        _mintableToken.finishMinting();
-        // Unpause the token
-        PausableToken _pausableToken = PausableToken(token);
-        _pausableToken.unpause();
-        _pausableToken.transferOwnership(wallet);
+        // _mintableToken.finishMinting();
+        // // Unpause the token
+        // PausableToken _pausableToken = PausableToken(token);
+        // _pausableToken.unpause();
+        // _pausableToken.transferOwnership(wallet);
 
-        super.finalization();
-    }
+        // super.finalization();
+    // }
 }
