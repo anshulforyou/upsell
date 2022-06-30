@@ -1,6 +1,7 @@
 //SPDX-License-Identifier: Unlicense
 pragma solidity ^0.8.4;
 
+import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/TokenTimelock.sol";
@@ -20,12 +21,12 @@ contract atokenCrowdsale{
     // 1 wei will give you 1 unit, or 0.001 TOK.
     uint256 private _rate;
 
-    uint256 private _cap;
-
     // Track investor contributions
     uint256 public investorMinCap = 2000000000000000; // 0.002 ether
     uint256 public investorHardCap = 50000000000000000000; // 50 ether
     mapping(address => uint256) public contributions;
+
+    uint256 totalSupply = 1000000000;
 
     /**
      * Event for token purchase logging
@@ -37,40 +38,51 @@ contract atokenCrowdsale{
     event TokensPurchased(address indexed purchaser, address indexed beneficiary, uint256 value, uint256 amount);
 
     // Token Distribution
-    uint256 public tokenSalePercentage   = 70;
-    uint256 public foundersPercentage    = 10;
-    uint256 public foundationPercentage  = 10;
-    uint256 public partnersPercentage    = 10;
+    uint256 public _tokenSalePercentage   = 10;
+    uint256 public _foundersPercentage    = 20;
+    uint256 public _developersPercentage  = 10;
+    uint256 public _partnersPercentage    = 10;
 
     // Token reserve funds
-    address public _foundersFund;
-    address public _foundationFund;
-    address public _partnersFund;
+    address public _foundersWallet;
+    address public _developersWallet;
+    address public _partnersWallet;
 
 
     //Token Time Lock
-    address public foundersTimelock;
-    address public foundationTimelock;
-    address public partnersTimelock;
+    uint256 public _releaseTime;
+    address public _foundersTimelock;
+    address public _developersTimelock;
+    address public _partnersTimelock;
 
 
     // Amount of wei raised
     uint256 private _weiRaised;
 
-    constructor (uint256 rate, address payable wallet, IERC20 token, uint256 cap, address foundersFund,
-    address foundationFund, address partnersFund){
-            require(rate > 0, "Crowdsale: rate is 0");
-            require(wallet != address(0), "Crowdsale: wallet is the zero address");
-            require(address(token) != address(0), "Crowdsale: token is the zero address");
-            require(cap > 0, "CappedCrowdsale: cap is 0");
+    constructor (uint256 rate, address payable wallet, IERC20 token, address foundersFund,
+    address developersFund, address partnersFund){
+        require(rate > 0, "Crowdsale: rate is 0");
+        require(wallet != address(0), "Crowdsale: wallet is the zero address");
+        require(address(token) != address(0), "Crowdsale: token is the zero address");
+        // require(cap > 0, "CappedCrowdsale: cap is 0");
 
-            _rate = rate;
-            _wallet = wallet;
-            _token = token;
-            _cap = cap;
-            _foundersFund   = foundersFund;
-            _foundationFund = foundationFund;
-            _partnersFund   = partnersFund;
+        _rate = rate;
+        _wallet = wallet;
+        _token = token;
+
+        _foundersWallet   = foundersFund;
+        _developersWallet = developersFund;
+        _partnersWallet   = partnersFund;
+
+        _foundersTimelock   = new TokenTimelock(token, _foundersWallet, _releaseTime);
+        _developersTimelock = new TokenTimelock(token, _developersWallet, _releaseTime);
+        _partnersTimelock   = new TokenTimelock(token, _partnersWallet, _releaseTime);
+
+        _token._mint(address(_foundersTimelock), totalSupply.mul(_foundersPercentage).div(100));
+        _token._mint(address(_developersTimelock), totalSupply.mul(_developersPercentage).div(100));
+        _token._mint(address(_partnersTimelock), totalSupply.mul(_partnersPercentage).div(100));
+
+
     }
 
     /**
@@ -242,18 +254,18 @@ contract atokenCrowdsale{
     * @dev enables token transfers, called when owner calls finalize()
     */
     function finalization() internal {
-        MintableToken _mintableToken = MintableToken(token);
+        ERC20 _mintableToken = ERC20(token);
         uint256 _alreadyMinted = _mintableToken.totalSupply();
 
-        uint256 _finalTotalSupply = _alreadyMinted.div(tokenSalePercentage).mul(100);
+        // uint256 _finalTotalSupply = _alreadyMinted.div(tokenSalePercentage).mul(100);
 
-        foundersTimelock   = new TokenTimelock(token, foundersFund, releaseTime);
-        foundationTimelock = new TokenTimelock(token, foundationFund, releaseTime);
-        partnersTimelock   = new TokenTimelock(token, partnersFund, releaseTime);
+        _foundersTimelock   = new TokenTimelock(token, _foundersWallet, _releaseTime);
+        _developersTimelock = new TokenTimelock(token, _developersWallet, _releaseTime);
+        _partnersTimelock   = new TokenTimelock(token, _partnersWallet, _releaseTime);
 
-        _mintableToken.mint(address(foundersTimelock),   _finalTotalSupply.mul(foundersPercentage).div(100));
-        _mintableToken.mint(address(foundationTimelock), _finalTotalSupply.mul(foundationPercentage).div(100));
-        _mintableToken.mint(address(partnersTimelock),   _finalTotalSupply.mul(partnersPercentage).div(100));
+        _mintableToken.mint(address(_foundersTimelock),   _finalTotalSupply.mul(_foundersPercentage).div(100));
+        _mintableToken.mint(address(_developersTimelock), _finalTotalSupply.mul(_developersPercentage).div(100));
+        _mintableToken.mint(address(_partnersTimelock),   _finalTotalSupply.mul(_partnersPercentage).div(100));
 
         _mintableToken.finishMinting();
         // Unpause the token
@@ -263,5 +275,4 @@ contract atokenCrowdsale{
 
         super.finalization();
     }
-
 }
