@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.7;
 
-import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/extensions/ERC20Pausable.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 
-contract UPsellToken is ERC20, Ownable{
+contract UPsellToken is ERC20Pausable, Ownable{
     // uint256 private tokenSupply = 0;
     constructor() ERC20("UPsellToken", "UPSELL"){
         _mint(msg.sender, 15000*10**uint256(decimals()));
@@ -27,5 +27,13 @@ contract UPsellToken is ERC20, Ownable{
         _mint(rewardee, amount);
         // tokenSupply+=amount;
         // return tokenSupply();
+    }
+
+    function pauseTransfer() public onlyOwner{
+        _pause();
+    }
+
+    function resumeTransfer() public onlyOwner{
+        _unpause();
     }
 }
