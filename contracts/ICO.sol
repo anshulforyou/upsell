@@ -8,7 +8,9 @@ import "@openzeppelin/contracts/token/ERC20/utils/TokenTimelock.sol";
 import "@openzeppelin/contracts/token/ERC20/extensions/ERC20Pausable.sol";
 import "@openzeppelin/contracts/token/ERC20/presets/ERC20PresetMinterPauser.sol";
 
-contract ICO{
+import "@openzeppelin/contracts/access/Ownable.sol";
+
+contract ICO is Ownable{
     using SafeERC20 for IERC20;
 
     // The token being sold
@@ -91,7 +93,7 @@ contract ICO{
         _token.mint(address(_developersTimelock), (totalSupply*(_developersPercentage))/100);
         _token.mint(address(_partnersTimelock), (totalSupply*(_partnersPercentage))/100);
 
-
+        _token.pause();
     }
 
     /**
@@ -165,6 +167,8 @@ contract ICO{
 
         // calculate token amount to be created
         uint256 tokens = _getTokenAmount(weiAmount);
+
+        // Add a check on the  current supply is less than total supply
 
         // update state
         _weiRaised = _weiRaised + weiAmount;
@@ -262,26 +266,11 @@ contract ICO{
     /**
     * @dev enables token transfers, called when owner calls finalize()
     */
-    // function finalization() internal {
-        // ERC20 _mintableToken = ERC20(token);
+    function finishSale() public onlyOwner {
+        ERC20PresetMinterPauser tempToken = ERC20PresetMinterPauser(_token);
+        tempToken.unpause();
+        // tempToken.transferOwnership(wallet);
+        address(_token).call(abi.encodeWithSignature("transferOwnership", _wallet));
         // uint256 _alreadyMinted = _mintableToken.totalSupply();
-
-        // // uint256 _finalTotalSupply = _alreadyMinted.div(tokenSalePercentage).mul(100);
-
-        // _foundersTimelock   = new TokenTimelock(token, _foundersWallet, _releaseTime);
-        // _developersTimelock = new TokenTimelock(token, _developersWallet, _releaseTime);
-        // _partnersTimelock   = new TokenTimelock(token, _partnersWallet, _releaseTime);
-
-        // _mintableToken.mint(address(_foundersTimelock),   _finalTotalSupply.mul(_foundersPercentage).div(100));
-        // _mintableToken.mint(address(_developersTimelock), _finalTotalSupply.mul(_developersPercentage).div(100));
-        // _mintableToken.mint(address(_partnersTimelock),   _finalTotalSupply.mul(_partnersPercentage).div(100));
-
-        // _mintableToken.finishMinting();
-        // // Unpause the token
-        // PausableToken _pausableToken = PausableToken(token);
-        // _pausableToken.unpause();
-        // _pausableToken.transferOwnership(wallet);
-
-        // super.finalization();
-    // }
+    }
 }
