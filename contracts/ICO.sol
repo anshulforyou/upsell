@@ -57,10 +57,12 @@ contract ICO is Ownable{
 
 
     //Token Time Lock
-    uint256 public _releaseTime;
+    uint256 public _releaseTime = block.timestamp + 5 minutes;
     TokenTimelock public _foundersTimelock;
     TokenTimelock public _developersTimelock;
     TokenTimelock public _partnersTimelock;
+
+    bool public _saleLive = false;
 
 
     // Amount of wei raised
@@ -85,15 +87,22 @@ contract ICO is Ownable{
         _developersTimelock = new TokenTimelock(token, _developersWallet, _releaseTime);
         _partnersTimelock   = new TokenTimelock(token, _partnersWallet, _releaseTime);
 
-        // ERC20PresetMinterPauser _mintableToken = ERC20PresetMinterPauser(_token);
-
         saleTokenSupply = (totalSupply*_publicSalePercentage)/100;
+    }
 
+    function startSale() public onlyOwner{
         _token.mint(address(_foundersTimelock), (totalSupply*_foundersPercentage)/100);
         _token.mint(address(_developersTimelock), (totalSupply*(_developersPercentage))/100);
         _token.mint(address(_partnersTimelock), (totalSupply*(_partnersPercentage))/100);
 
         _token.pause();
+        _saleLive = true;
+    }
+
+    function releaseTokens() public {
+        _foundersTimelock.release();
+        _developersTimelock.release();
+        _partnersTimelock.release();
     }
 
     /**
@@ -168,7 +177,13 @@ contract ICO is Ownable{
         // calculate token amount to be created
         uint256 tokens = _getTokenAmount(weiAmount);
 
-        // Add a check on the  current supply is less than total supply
+        uint256 mintedSuppy = _token.totalSupply();
+        
+        if (totalSupply<(mintedSuppy+tokens)){
+            _saleLive = false;
+        }
+
+        require(_saleLive==true);
 
         // update state
         _weiRaised = _weiRaised + weiAmount;
@@ -271,6 +286,8 @@ contract ICO is Ownable{
         tempToken.unpause();
         // tempToken.transferOwnership(wallet);
         address(_token).call(abi.encodeWithSignature("transferOwnership", _wallet));
+
+        _saleLive = false;
         // uint256 _alreadyMinted = _mintableToken.totalSupply();
     }
 }
