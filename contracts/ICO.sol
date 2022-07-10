@@ -30,7 +30,7 @@ contract ICO is Ownable{
     uint256 public investorHardCap = 50000000000000000000; // 50 ether
     mapping(address => uint256) public contributions;
 
-    uint256 totalSupply = 1000000000;
+    uint256 public totalSupply = 1000000000*10**uint256(18);
 
     /**
      * Event for token purchase logging
@@ -91,9 +91,13 @@ contract ICO is Ownable{
     }
 
     function startSale() public onlyOwner{
-        _token.mint(address(_foundersTimelock), (totalSupply*_foundersPercentage)/100);
-        _token.mint(address(_developersTimelock), (totalSupply*(_developersPercentage))/100);
-        _token.mint(address(_partnersTimelock), (totalSupply*(_partnersPercentage))/100);
+        _token.mint(address(_foundersWallet), (totalSupply*(_foundersPercentage/2))/100);
+        _token.mint(address(_developersWallet), (totalSupply*(_developersPercentage/2))/100);
+        _token.mint(address(_partnersWallet), (totalSupply*(_partnersPercentage/2))/100);
+
+        _token.mint(address(_foundersTimelock), (totalSupply*(_foundersPercentage/2))/100);
+        _token.mint(address(_developersTimelock), (totalSupply*(_developersPercentage/2))/100);
+        _token.mint(address(_partnersTimelock), (totalSupply*(_partnersPercentage/2))/100);
 
         _token.pause();
         _saleLive = true;
@@ -183,7 +187,7 @@ contract ICO is Ownable{
             _saleLive = false;
         }
 
-        require(_saleLive==true);
+        require(_saleLive!=false, "Sale is not live yet or it finished!");
 
         // update state
         _weiRaised = _weiRaised + weiAmount;
@@ -228,8 +232,9 @@ contract ICO is Ownable{
      * @param tokenAmount Number of tokens to be emitted
      */
     function _deliverTokens(address beneficiary, uint256 tokenAmount) internal {
-        (bool success, bytes memory result) = address(_token).call(abi.encodeWithSignature("mint(uint256)", tokenAmount));
-        _token.transfer(beneficiary, tokenAmount);
+        // (bool success, bytes memory result) = address(_token).call(abi.encodeWithSignature("mint(address, uint256)", beneficiary, tokenAmount));
+        // Have to solve the pausing issue here
+        _token.mint(beneficiary, tokenAmount);
     }
 
     /**
