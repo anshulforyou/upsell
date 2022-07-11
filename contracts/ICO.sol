@@ -99,7 +99,7 @@ contract ICO is Ownable{
         _token.mint(address(_developersTimelock), (totalSupply*(_developersPercentage/2))/100);
         _token.mint(address(_partnersTimelock), (totalSupply*(_partnersPercentage/2))/100);
 
-        _token.pause();
+        // _token.pause();
         _saleLive = true;
     }
 
@@ -288,7 +288,7 @@ contract ICO is Ownable{
     */
     function finishSale() public onlyOwner {
         ERC20PresetMinterPauser tempToken = ERC20PresetMinterPauser(_token);
-        tempToken.unpause();
+        // tempToken.unpause();
         // tempToken.transferOwnership(wallet);
         address(_token).call(abi.encodeWithSignature("transferOwnership", _wallet));
 
