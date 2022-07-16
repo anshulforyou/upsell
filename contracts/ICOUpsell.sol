@@ -10,7 +10,7 @@ import "@openzeppelin/contracts/token/ERC20/presets/ERC20PresetMinterPauser.sol"
 
 import "@openzeppelin/contracts/access/Ownable.sol";
 
-contract ICO is Ownable{
+contract ICOUpsell is Ownable{
     using SafeERC20 for IERC20;
 
     // The token being sold
