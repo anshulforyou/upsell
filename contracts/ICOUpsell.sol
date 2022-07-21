@@ -46,7 +46,6 @@ contract ICOUpsell is Ownable{
     uint256 public _foundersPercentage    = 20;
     uint256 public _developersPercentage  = 10;
     uint256 public _partnersPercentage    = 10;
-    uint256 public _publicSalePercentage  =  5;
 
     uint256 internal saleTokenSupply;
 
@@ -87,7 +86,7 @@ contract ICOUpsell is Ownable{
         _developersTimelock = new TokenTimelock(token, _developersWallet, _releaseTime);
         _partnersTimelock   = new TokenTimelock(token, _partnersWallet, _releaseTime);
 
-        saleTokenSupply = (totalSupply*_publicSalePercentage)/100;
+        saleTokenSupply = (totalSupply*_tokenSalePercentage)/100;
     }
 
     function startSale() public onlyOwner{
