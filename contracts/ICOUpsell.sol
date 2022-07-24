@@ -89,6 +89,10 @@ contract ICOUpsell is Ownable{
         saleTokenSupply = (totalSupply*_tokenSalePercentage)/100;
     }
 
+    /**
+     * @dev starts the sale and mints the token for predefined stakehoders.
+     * NOTE Needs to be executed after the ownership of token smart contract is transferred to ICO smart contract 
+     */
     function startSale() public onlyOwner{
         _token.mint(address(_foundersWallet), (totalSupply*(_foundersPercentage/2))/100);
         _token.mint(address(_developersWallet), (totalSupply*(_developersPercentage/2))/100);
@@ -102,6 +106,9 @@ contract ICOUpsell is Ownable{
         _saleLive = true;
     }
 
+    /**
+     * @dev releases the vested tokens for all the stakeholders. Needs to be called after the vesting time period.
+     */
     function releaseTokens() public {
         _foundersTimelock.release();
         _developersTimelock.release();
@@ -186,7 +193,7 @@ contract ICOUpsell is Ownable{
             _saleLive = false;
         }
 
-        require(_saleLive!=false, "Sale is not live yet or it finished!");
+        require(_saleLive!=false, "Sale is not live yet or it's finished!");
 
         // update state
         _weiRaised = _weiRaised + weiAmount;
@@ -276,7 +283,7 @@ contract ICOUpsell is Ownable{
     }
 
     /**
-     * @dev Determines how ETH is stored/forwarded on purchases.
+     * @dev Transfers the ETH to the collection wallet
      */
     function _forwardFunds() internal {
         _wallet.transfer(msg.value);
@@ -286,7 +293,7 @@ contract ICOUpsell is Ownable{
     * @dev enables token transfers, called when owner calls finalize()
     */
     function finishSale() public onlyOwner {
-        ERC20PresetMinterPauser tempToken = ERC20PresetMinterPauser(_token);
+        // ERC20PresetMinterPauser tempToken = ERC20PresetMinterPauser(_token);
         // tempToken.unpause();
         // tempToken.transferOwnership(wallet);
         address(_token).call(abi.encodeWithSignature("transferOwnership", _wallet));
