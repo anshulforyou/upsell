@@ -1,38 +1,62 @@
-//SPDX-License-Identifier: Unlicense
-pragma solidity ^0.8.4;
+// SPDX-License-Identifier: Unlicense
+pragma solidity 0.8.4;
 
-import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/TokenTimelock.sol";
-import "@openzeppelin/contracts/token/ERC20/extensions/ERC20Pausable.sol";
 import "@openzeppelin/contracts/token/ERC20/presets/ERC20PresetMinterPauser.sol";
 
 import "@openzeppelin/contracts/access/Ownable.sol";
 
-contract ICOUpsell is Ownable{
+contract ICOUpsell is Ownable {
     using SafeERC20 for IERC20;
 
     // The token being sold
-    ERC20PresetMinterPauser private _token;
+    address private immutable _token;
 
     // Address where funds are collected
-    address payable private _wallet;
+    address payable private immutable _wallet;
 
     // How many token units a buyer gets per wei.
     // The rate is the conversion between wei and the smallest and indivisible token unit.
     // So, if you are using a rate of 1 with a ERC20Detailed token with 3 decimals called TOK
     // 1 wei will give you 1 unit, or 0.001 TOK.
-    uint256 private _rate;
+    uint256 private immutable _rate;
+
+    mapping(address => uint256) private contributions;
+
+    // Amount of wei raised
+    uint256 private _weiRaised;
+    uint256 private _saleTokenSupply;
 
     // Track investor contributions
-    uint256 public investorMinCap = 2000000000000000; // 0.002 ether
-    uint256 public investorHardCap = 50000000000000000000; // 50 ether
-    mapping(address => uint256) public contributions;
+    uint256 public constant INVESTOR_MIN_CAP = 2000000 gwei; // 0.002 ether
+    uint256 public constant INVESTOR_HARD_CAP = 50 ether; // 50 ether
 
-    uint256 public totalSupply = 1000000000*10**uint256(18);
+    uint256 public constant TOTAL_SUPPLY = 1000000000 ether;
 
-    /**
+    // Token Distribution
+    uint8 public constant TOKEN_SALE_PERCENTAGE  = 10;
+    uint8 public constant FOUNDERS_PERCENTAGE    = 20;
+    uint8 public constant DEVELOPERS_PERCENTAGE  = 10;
+    uint8 public constant PARTNERS_PERCENTAGE    = 10;
+
+    // Token reserve funds
+    address public immutable foundersWallet;
+    address public immutable developersWallet;
+    address public immutable partnersWallet;
+
+
+    //Token Time Lock
+    uint256 public releaseTime = block.timestamp + 5 minutes;
+    address public foundersTimelock;
+    address public developersTimelock;
+    address public partnersTimelock;
+
+    bool public saleLive = false;
+
+
+     /**
      * Event for token purchase logging
      * @param purchaser who paid for the tokens
      * @param beneficiary who got the tokens
@@ -41,98 +65,79 @@ contract ICOUpsell is Ownable{
      */
     event TokensPurchased(address indexed purchaser, address indexed beneficiary, uint256 value, uint256 amount);
 
-    // Token Distribution
-    uint256 public _tokenSalePercentage   = 10;
-    uint256 public _foundersPercentage    = 20;
-    uint256 public _developersPercentage  = 10;
-    uint256 public _partnersPercentage    = 10;
 
-    uint256 internal saleTokenSupply;
-
-    // Token reserve funds
-    address public _foundersWallet;
-    address public _developersWallet;
-    address public _partnersWallet;
-
-
-    //Token Time Lock
-    uint256 public _releaseTime = block.timestamp + 5 minutes;
-    TokenTimelock public _foundersTimelock;
-    TokenTimelock public _developersTimelock;
-    TokenTimelock public _partnersTimelock;
-
-    bool public _saleLive = false;
-
-
-    // Amount of wei raised
-    uint256 private _weiRaised;
-
-    constructor (uint256 rate, address payable wallet, ERC20PresetMinterPauser token, address foundersFund,
-    address developersFund, address partnersFund){
-        require(rate > 0, "Crowdsale: rate is 0");
-        require(wallet != address(0), "Crowdsale: wallet is the zero address");
-        require(address(token) != address(0), "Crowdsale: token is the zero address");
+    constructor (
+        uint256 rate_, 
+        address payable wallet_, 
+        ERC20PresetMinterPauser token_, 
+        address foundersWallet_,
+        address developersWallet_, 
+        address partnersWallet_
+    ) {
+        require(rate_ > 0, "Crowdsale: rate is 0");
+        require(wallet_ != address(0), "Crowdsale: wallet is the zero address");
+        require(address(token_) != address(0), "Crowdsale: token is the zero address");
         // require(cap > 0, "CappedCrowdsale: cap is 0");
 
-        _rate = rate;
-        _wallet = wallet;
-        _token = token;
+        _rate = rate_;
+        _wallet = wallet_;
+        _token = address(token_);
 
-        _foundersWallet   = foundersFund;
-        _developersWallet = developersFund;
-        _partnersWallet   = partnersFund;
+        foundersWallet   = foundersWallet_;
+        developersWallet = developersWallet_;
+        partnersWallet   = partnersWallet_;
 
-        _foundersTimelock   = new TokenTimelock(token, _foundersWallet, _releaseTime);
-        _developersTimelock = new TokenTimelock(token, _developersWallet, _releaseTime);
-        _partnersTimelock   = new TokenTimelock(token, _partnersWallet, _releaseTime);
+        foundersTimelock   = address(new TokenTimelock(IERC20(token_), foundersWallet_, releaseTime));
+        developersTimelock = address(new TokenTimelock(IERC20(token_), developersWallet_, releaseTime));
+        partnersTimelock   = address(new TokenTimelock(IERC20(token_), partnersWallet_, releaseTime));
 
-        saleTokenSupply = (totalSupply*_tokenSalePercentage)/100;
+        _saleTokenSupply = (TOTAL_SUPPLY*TOKEN_SALE_PERCENTAGE)/100;
     }
 
     /**
      * @dev starts the sale and mints the token for predefined stakehoders.
      * NOTE Needs to be executed after the ownership of token smart contract is transferred to ICO smart contract 
      */
-    function startSale() public onlyOwner{
-        _token.mint(address(_foundersWallet), (totalSupply*(_foundersPercentage/2))/100);
-        _token.mint(address(_developersWallet), (totalSupply*(_developersPercentage/2))/100);
-        _token.mint(address(_partnersWallet), (totalSupply*(_partnersPercentage/2))/100);
+    function startSale() external onlyOwner {
+        ERC20PresetMinterPauser(_token).mint(address(foundersWallet), ((TOTAL_SUPPLY*FOUNDERS_PERCENTAGE)/2)/100);
+        ERC20PresetMinterPauser(_token).mint(address(developersWallet), ((TOTAL_SUPPLY*DEVELOPERS_PERCENTAGE)/2)/100);
+        ERC20PresetMinterPauser(_token).mint(address(partnersWallet), ((TOTAL_SUPPLY*PARTNERS_PERCENTAGE)/2)/100);
 
-        _token.mint(address(_foundersTimelock), (totalSupply*(_foundersPercentage/2))/100);
-        _token.mint(address(_developersTimelock), (totalSupply*(_developersPercentage/2))/100);
-        _token.mint(address(_partnersTimelock), (totalSupply*(_partnersPercentage/2))/100);
+        ERC20PresetMinterPauser(_token).mint(address(foundersTimelock), ((TOTAL_SUPPLY*FOUNDERS_PERCENTAGE)/2)/100);
+        ERC20PresetMinterPauser(_token).mint(address(developersTimelock), ((TOTAL_SUPPLY*DEVELOPERS_PERCENTAGE)/2)/100);
+        ERC20PresetMinterPauser(_token).mint(address(partnersTimelock), ((TOTAL_SUPPLY*PARTNERS_PERCENTAGE)/2)/100);
 
         // _token.pause();
-        _saleLive = true;
+        saleLive = true;
     }
 
     /**
      * @dev releases the vested tokens for all the stakeholders. Needs to be called after the vesting time period.
      */
-    function releaseTokens() public {
-        _foundersTimelock.release();
-        _developersTimelock.release();
-        _partnersTimelock.release();
+    function releaseTokens() external {
+        TokenTimelock(foundersTimelock).release();
+        TokenTimelock(developersTimelock).release();
+        TokenTimelock(partnersTimelock).release();
     }
 
     /**
      * @return the token being sold.
      */
-    function token() public view returns (IERC20) {
-        return _token;
+    function token() external view returns (IERC20) {
+        return IERC20(_token);
     }
 
     /**
      * @return the address where funds are collected.
      */
-    function wallet() public view returns (address payable) {
+    function wallet() external view returns (address payable) {
         return _wallet;
     }
 
     /**
      * @return the number of token units a buyer gets per wei.
      */
-    function rate() public view returns (uint256) {
+    function rate() external view returns (uint256) {
         return _rate;
     }
 
@@ -142,7 +147,9 @@ contract ICOUpsell is Ownable{
     * @return User contribution so far
     */
     function getUserContribution(address _beneficiary)
-        public view returns (uint256)
+        external 
+        view 
+        returns (uint256)
     {
         return contributions[_beneficiary];
     }
@@ -187,13 +194,13 @@ contract ICOUpsell is Ownable{
         // calculate token amount to be created
         uint256 tokens = _getTokenAmount(weiAmount);
 
-        uint256 mintedSuppy = _token.totalSupply();
+        uint256 mintedSupply = ERC20PresetMinterPauser(_token).totalSupply();
         
-        if (totalSupply<(mintedSuppy+tokens)){
-            _saleLive = false;
+        if (TOTAL_SUPPLY<(mintedSupply+tokens)) {
+            saleLive = false;
         }
 
-        require(_saleLive!=false, "Sale is not live yet or it's finished!");
+        require(saleLive!=false, "Sale is not live yet or it finished!");
 
         // update state
         _weiRaised = _weiRaised + weiAmount;
@@ -203,7 +210,7 @@ contract ICOUpsell is Ownable{
 
         _updatePurchasingState(beneficiary, weiAmount);
 
-        _forwardFunds();
+        // _forwardFunds();
         _postValidatePurchase(beneficiary, weiAmount);
     }
 
@@ -221,11 +228,11 @@ contract ICOUpsell is Ownable{
         preValidatePurchase(_beneficiary, _weiAmount);
         uint256 _existingContribution = contributions[_beneficiary];
         uint256 _newContribution = _existingContribution+_weiAmount;
-        require(_newContribution >= investorMinCap && _newContribution <= investorHardCap);
+        require(_newContribution >= INVESTOR_MIN_CAP && _newContribution <= INVESTOR_HARD_CAP);
         contributions[_beneficiary] = _newContribution;
     }
 
-    function preValidatePurchase(address _beneficiary, uint256 _weiAmount) internal view{
+    function preValidatePurchase(address _beneficiary, uint256 _weiAmount) internal view {
         require(_beneficiary != address(0), "Crowdsale: beneficiary is the zero address");
         require(_weiAmount != 0, "Crowdsale: weiAmount is 0");
         this; // silence state mutability warning without generating bytecode - see https://github.com/ethereum/solidity/issues/2691
@@ -240,7 +247,7 @@ contract ICOUpsell is Ownable{
     function _deliverTokens(address beneficiary, uint256 tokenAmount) internal {
         // (bool success, bytes memory result) = address(_token).call(abi.encodeWithSignature("mint(address, uint256)", beneficiary, tokenAmount));
         // Have to solve the pausing issue here
-        _token.mint(beneficiary, tokenAmount);
+        ERC20PresetMinterPauser(_token).mint(beneficiary, tokenAmount);
     }
 
     /**
@@ -282,23 +289,28 @@ contract ICOUpsell is Ownable{
         // solhint-disable-previous-line no-empty-blocks
     }
 
-    /**
-     * @dev Transfers the ETH to the collection wallet
-     */
-    function _forwardFunds() internal {
-        _wallet.transfer(msg.value);
+    // /**
+    //  * @dev Determines how ETH is stored/forwarded on purchases.
+    //  */
+    // function _forwardFunds() internal {
+    //     _wallet.transfer(msg.value);
+    // }
+
+    function withdrawFunds() external onlyOwner {
+        _wallet.transfer(address(this).balance);
     }
 
     /**
     * @dev enables token transfers, called when owner calls finalize()
     */
-    function finishSale() public onlyOwner {
-        // ERC20PresetMinterPauser tempToken = ERC20PresetMinterPauser(_token);
+    function finishSale() external onlyOwner {
+        // ERC20PresetMinterPauser tempToken = ERC20PresetMinterPauser(token);
         // tempToken.unpause();
         // tempToken.transferOwnership(wallet);
-        address(_token).call(abi.encodeWithSignature("transferOwnership", _wallet));
+        (bool success,) = address(_token).call(abi.encodeWithSignature("transferOwnership", _wallet));
+        require(success, "Transfer ownership failed");
 
-        _saleLive = false;
-        // uint256 _alreadyMinted = _mintableToken.totalSupply();
+        saleLive = false;
+        // uint256 _alreadyMinted = _mintableToken.TOTAL_SUPPLY();
     }
 }
