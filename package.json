@@ -4,13 +4,17 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "compile": "hardhat compile",
+    "clean": "hardhat clean",
+    "node": "hardhat node",
+    "test": "hardhat test"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "devDependencies": {
-    "hardhat": "^2.9.6"
+    "hardhat": "^2.9.6",
+    "hardhat-gas-reporter": "^1.0.8"
   },
   "dependencies": {
     "@nomiclabs/hardhat-ethers": "^2.0.6",
