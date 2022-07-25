@@ -40,3 +40,63 @@ _releaseTime - Time for which the tokens are vested.
 _foundersTimelock, _developersTimelock, _partnersTimelock - Time locks on the tokens vested.
 
 _saleLive - boolean to turn on or off the sale of tokens.
+
+## Functions
+Constructor - While deploying the contract, rate, token address, stakeholders wallet addresses and collection wallet address needs to be passed to the constructor. The constructor then declares the value of global varibales based on values provided as input. Apart from it the value of timelocks and total supply is declared.
+    Inputs - {
+        uint256 rate,
+        address payable wallet,
+        ERC20PresetMinterPauser token,
+        address foundersFund,
+        address developersFund, 
+        address partnersFund
+    }
+
+
+startSale - This particular function shifts the boolean saleLive to true and also mints the tokens for the predefined stakeholders.
+    Requirement - {
+        ICO contract is owner of Upsell token contract
+        Only owner of ICO smart contract can call the function
+    }
+    Inputs - Null
+
+releaseToken - This function releases the vested tokens of an individual. This function can be called by anyone and would release the vested tokens of all the stakeholders if the vested period is over.
+
+token, wallet, rate - view only functions which returns the value of the mentioned global variables - token address, wallet address and rate.
+
+getUserContribution - Returns the amount contributed by a specific user so far
+    Input - Address of the user
+
+fallback - executes the buyTokens function with msg sender as input.
+    If anyone will send eth to the contract they will automatically get the tokens.
+
+nonReentrant modifier to prevent the reentrancy attack in the buyTokens function
+
+buyTokens - The function responsible for allocating the token to the user based on the amount of ETH contributes by the user.
+    Input - Beneficiary address
+    Keep in mind that it is a low level function for token purchase and should not be override.
+
+    _preValidatePurchase, _getTokenAmount, _processPurchase, _updatePurchasingState, _forwardsFunds and _postValidatePurchase are all helper functions for buyTokens function
+
+    require statements - Before processing the tokens to the user, it is checked if the sale is live or not.
+
+_getTokenAmount - Calculates the number of tokens need to be given based on amount of ETH contributed.
+
+_preValidatePurchase - Validation of an incoming purchase. Use require statements to revert state when conditions are not met.
+    Input - _beneficiary Address performing the token purchase, _weiAmount Value in wei involved in the purchase
+
+_processPurchase - Executes when a purchase has been validated and is ready to be executed. Doesn't necessarily emit/send tokens.
+    Input - beneficiary address receiving the token, Token amount that needs to be transferred.
+    
+_forwardFunds - Transfers the ETH received to the collection wallet
+
+_postValidatePurchase - Validation of an executed purchase. Observe state and use revert statements to undo rollback when valid
+conditions are not met.
+    Input - beneficiary Address performing the token purchase, weiAmount Value in wei involved in the purchase
+
+finishSale - Switches the _saleLive variable to false and transfer the ownership of the token smart contract to the wallet.
+
+
+
+## Things to change before mainnet deploy -
+    Address of the final owner of the token contract in the finishsale function
