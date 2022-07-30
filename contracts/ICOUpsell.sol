@@ -33,7 +33,7 @@ contract ICOUpsell is Ownable {
     uint256 public constant INVESTOR_MIN_CAP = 2000000 gwei; // 0.002 ether
     uint256 public constant INVESTOR_HARD_CAP = 50 ether; // 50 ether
 
-    uint256 public constant TOTAL_SUPPLY = 1000000000 ether;
+    uint256 public constant TOTAL_SUPPLY = 10000000 ether;
 
     // Token Distribution
     uint8 public constant TOKEN_SALE_PERCENTAGE  = 10;
