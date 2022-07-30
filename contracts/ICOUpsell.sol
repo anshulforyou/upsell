@@ -296,7 +296,7 @@ contract ICOUpsell is Ownable {
     //     _wallet.transfer(msg.value);
     // }
 
-    function withdrawFunds() external onlyOwner {
+    function withdrawFunds() public onlyOwner {
         _wallet.transfer(address(this).balance);
     }
 
@@ -304,11 +304,11 @@ contract ICOUpsell is Ownable {
     * @dev enables token transfers, called when owner calls finalize()
     */
     function finishSale() external onlyOwner {
-        // ERC20PresetMinterPauser tempToken = ERC20PresetMinterPauser(token);
-        // tempToken.unpause();
-        // tempToken.transferOwnership(wallet);
-        (bool success,) = address(_token).call(abi.encodeWithSignature("transferOwnership", _wallet));
-        require(success, "Transfer ownership failed");
+        // ERC20PresetMinterPauser(_token).unpause();
+        // Ownable(_token).transferOwnership(_wallet);
+        // (bool success,) = address(_token).call(abi.encodeWithSignature("transferOwnership", _wallet));
+        // require(success, "Transfer ownership failed");
+        withdrawFunds();
 
         saleLive = false;
         // uint256 _alreadyMinted = _mintableToken.TOTAL_SUPPLY();
