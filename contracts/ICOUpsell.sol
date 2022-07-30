@@ -33,7 +33,7 @@ contract ICOUpsell is Ownable {
     uint256 public constant INVESTOR_MIN_CAP = 2000000 gwei; // 0.002 ether
     uint256 public constant INVESTOR_HARD_CAP = 50 ether; // 50 ether
 
-    uint256 public constant TOTAL_SUPPLY = 1000000000 ether;
+    uint256 public constant TOTAL_SUPPLY = 10000000 ether;
 
     // Token Distribution
     uint8 public constant TOKEN_SALE_PERCENTAGE  = 10;
@@ -48,7 +48,7 @@ contract ICOUpsell is Ownable {
 
 
     //Token Time Lock
-    uint256 public releaseTime = block.timestamp + 5 minutes;
+    uint256 public releaseTime = block.timestamp + 3*365 days;
     address public foundersTimelock;
     address public developersTimelock;
     address public partnersTimelock;

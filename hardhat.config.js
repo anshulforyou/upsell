@@ -4,8 +4,11 @@ require("@nomiclabs/hardhat-etherscan");
 // require("@nomiclabs/hardhat-ganache");
 require("@nomiclabs/hardhat-web3");
 require("hardhat-gas-reporter");
+require('solidity-coverage')
 require("dotenv").config();
+
 const {POLYGON_MUMBAI_RPC_PROVIDER, POLYGON_MAINNET_RPC_PROVIDER, PRIVATE_KEY, POLYGON_API_KEY} = process.env;
+
 module.exports = {
   defaultNetwork: "hardhat",
   networks: {
@@ -58,5 +61,10 @@ module.exports = {
   },
   mocha: {
     timeout: 20000
+  },
+  gasReporter: {
+    enabled: process.env.REPORT_GAS != undefined,
+    currency: 'USD',
+    token: 'MATIC'
   }
 }
