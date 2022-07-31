@@ -197,6 +197,20 @@ describe("Upsell ICO contract test", async function() {
                 ICOUpsell.connect(user1).buyTokens(user1.address, {value: 0})
             ).to.be.revertedWith("Crowdsale: weiAmount is 0");
         });
+
+        it('5. Purchase is reverted for insufficient token supply', async function () {
+            const cap = ethers.utils.formatEther(await UPsellToken.cap());
+            const mintedSupply = ethers.utils.formatEther(await UPsellToken.totalSupply());
+            await UPsellToken.mint(
+                wallet.address, 
+                ethers.utils.parseEther((
+                    parseFloat(cap) - parseFloat(mintedSupply)
+                ).toString())
+            );
+            await expect(
+                ICOUpsell.connect(user1).buyTokens(user1.address, {value: ethers.utils.parseEther("1")})
+            ).to.be.revertedWith("Sale is not live yet or it finished!");
+        });
     });
 
     describe("Closing token sale", async function() {
