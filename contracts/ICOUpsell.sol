@@ -48,7 +48,7 @@ contract ICOUpsell is Ownable {
 
 
     //Token Time Lock
-    uint256 public releaseTime = block.timestamp + 5 minutes;
+    uint256 public releaseTime = block.timestamp + 3*365 days;
     address public foundersTimelock;
     address public developersTimelock;
     address public partnersTimelock;
@@ -77,7 +77,9 @@ contract ICOUpsell is Ownable {
         require(rate_ > 0, "Crowdsale: rate is 0");
         require(wallet_ != address(0), "Crowdsale: wallet is the zero address");
         require(address(token_) != address(0), "Crowdsale: token is the zero address");
-        // require(cap > 0, "CappedCrowdsale: cap is 0");
+        require(foundersWallet_ != address(0), "Crowdsale: zero address");
+        require(developersWallet_ != address(0), "Crowdsale: zero address");
+        require(partnersWallet_ != address(0), "Crowdsale: zero address");
 
         _rate = rate_;
         _wallet = wallet_;
@@ -203,7 +205,7 @@ contract ICOUpsell is Ownable {
         require(saleLive!=false, "Sale is not live yet or it finished!");
 
         // update state
-        _weiRaised = _weiRaised + weiAmount;
+        _weiRaised += weiAmount;
 
         _processPurchase(beneficiary, tokens);
         emit TokensPurchased(msg.sender, beneficiary, weiAmount, tokens);
@@ -296,7 +298,7 @@ contract ICOUpsell is Ownable {
     //     _wallet.transfer(msg.value);
     // }
 
-    function withdrawFunds() external onlyOwner {
+    function withdrawFunds() public onlyOwner {
         _wallet.transfer(address(this).balance);
     }
 
@@ -304,13 +306,7 @@ contract ICOUpsell is Ownable {
     * @dev enables token transfers, called when owner calls finalize()
     */
     function finishSale() external onlyOwner {
-        // ERC20PresetMinterPauser tempToken = ERC20PresetMinterPauser(token);
-        // tempToken.unpause();
-        // tempToken.transferOwnership(wallet);
-        (bool success,) = address(_token).call(abi.encodeWithSignature("transferOwnership", _wallet));
-        require(success, "Transfer ownership failed");
-
         saleLive = false;
-        // uint256 _alreadyMinted = _mintableToken.TOTAL_SUPPLY();
+        withdrawFunds();
     }
 }
